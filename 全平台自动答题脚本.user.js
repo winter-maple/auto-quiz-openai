@@ -221,10 +221,16 @@ var GLOBAL = {
                     }
                     try {
                         const res = JSON.parse(r.responseText);
-                        const content = (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) || "";
+                        // 兼容多种返回格式
+                        const content =
+                            (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) ||
+                            (res.choices && res.choices[0] && res.choices[0].text) ||
+                            (res.data && res.data.choices && res.data.choices[0] && res.data.choices[0].message && res.data.choices[0].message.content) ||
+                            (res.result) ||
+                            "";
                         if (!content) {
-                            console.log("[OpenAI答题] 返回空内容:", r.responseText.substring(0, 200));
-                            notifyTip("AI返回空内容，检查模型名是否正确");
+                            console.log("[OpenAI答题] 返回空内容，原始响应:", r.responseText.substring(0, 500));
+                            notifyTip("AI返回内容为空，请F12看控制台[OpenAI答题]日志");
                             resolve(null);
                             return;
                         }
