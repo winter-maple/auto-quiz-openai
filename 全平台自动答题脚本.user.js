@@ -272,8 +272,8 @@ var GLOBAL = {
     async function searchAnswer(data) {
         data.location = location.href;
 
-        // 优先使用 OpenAI 兼容接口
-        if (GM_getValue("openai_api_url", "")) {
+        // 优先使用 OpenAI 兼容接口（需要手动开启）
+        if (GM_getValue("openai_enabled") && GM_getValue("openai_api_url", "")) {
             try {
                 const aiResult = await searchAnswerByOpenAI(data);
                 if (aiResult && aiResult.answer && aiResult.answer.allAnswer && aiResult.answer.allAnswer.length > 0) {
@@ -2742,6 +2742,7 @@ var GLOBAL = {
             GM_setValue("gpt", event.data.gpt);
             GM_setValue("search_delay", event.data.search_delay);
             GM_setValue("tiku_adapter", event.data.tiku_adapter);
+            GM_setValue("openai_enabled", !!event.data.openai_enabled);
             GM_setValue("openai_api_url", event.data.openai_api_url || "");
             GM_setValue("openai_api_key", event.data.openai_api_key || "");
             GM_setValue("openai_model", event.data.openai_model || "");
@@ -3441,9 +3442,13 @@ var GLOBAL = {
 
   <el-divider content-position="left">OpenAI 兼容接口答题</el-divider>
   <el-popover ref="popover_openai" placement="top-start" title="OpenAI兼容接口" width="220" trigger="hover"
-    content="支持 OpenAI / DeepSeek / 通义千问 / Ollama 等任何 OpenAI 兼容接口。填写后优先使用 AI 答题，失败则回退到原有题库。">
+    content="支持 OpenAI / DeepSeek / 通义千问 / Ollama 等任何 OpenAI 兼容接口。开启后优先使用 AI 答题，失败则回退到原有题库。">
   </el-popover>
-  <el-form-item v-popover:popover_openai label="API地址">
+  <el-form-item v-popover:popover_openai label="启用AI答题">
+    <el-switch v-model="openai_enabled"></el-switch>
+    <span style="font-size:11px;color:#999;margin-left:8px">{{ openai_enabled ? '已开启' : '已关闭' }}</span>
+  </el-form-item>
+  <el-form-item label="API地址">
     <el-input v-model="openai_api_url" placeholder="如 https://api.openai.com/v1"></el-input>
   </el-form-item>
   <el-form-item label="API Key">
@@ -3529,6 +3534,7 @@ const tips = [
                 tiku_adapter: '` + (GM_getValue("tiku_adapter") || "") + `',
                 search_delay: ` + (isNaN(parseInt(GM_getValue("search_delay"))) ? 2 : GM_getValue("search_delay")) + `,
                 gpt: '` + (GM_getValue("gpt") || -1) + `',
+                openai_enabled: ` + (GM_getValue("openai_enabled") ? "true" : "false") + `,
                 openai_api_url: '` + (GM_getValue("openai_api_url") || "") + `',
                 openai_api_key: '` + (GM_getValue("openai_api_key") || "") + `',
                 openai_model: '` + (GM_getValue("openai_model") || "") + `',
@@ -3582,7 +3588,7 @@ const tips = [
         },
         methods: {
             save_setting(){
-                 window.parent.postMessage({type: 'save_setting',search_delay:this.search_delay,gpt:this.gpt,tiku_adapter:this.tiku_adapter,openai_api_url:this.openai_api_url,openai_api_key:this.openai_api_key,openai_model:this.openai_model}, '*');
+                 window.parent.postMessage({type: 'save_setting',search_delay:this.search_delay,gpt:this.gpt,tiku_adapter:this.tiku_adapter,openai_enabled:this.openai_enabled,openai_api_url:this.openai_api_url,openai_api_key:this.openai_api_key,openai_model:this.openai_model}, '*');
                  this.show_setting = false
             },
             updateScript(currentVersion,newVersion,href){
