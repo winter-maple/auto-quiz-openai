@@ -147,11 +147,21 @@ var GLOBAL = {
         });
     });
     const baseService = "/scriptService/api";
+    function notifyTip(msg) {
+        try { iframeMsg("tip", { tip: msg }); } catch(e) {}
+    }
+
     async function searchAnswerByOpenAI(data) {
         const apiUrl = GM_getValue("openai_api_url", "");
         const apiKey = GM_getValue("openai_api_key", "");
         const model = GM_getValue("openai_model", "gpt-4o-mini");
         if (!apiUrl) return null;
+
+        // 构建正确的 URL：兼容用户填 /v1 或 /v1/chat/completions
+        let baseUrl = apiUrl.replace(/\/+$/, "");
+        if (!baseUrl.endsWith("/chat/completions")) {
+            baseUrl += "/chat/completions";
+        }
 
         const typeMap = { 0: "单选题", 1: "多选题", 2: "填空题", 3: "判断题", 4: "简答题", 5: "论述题" };
         const typeName = typeMap[data.type] || "未知题型";
@@ -177,10 +187,13 @@ var GLOBAL = {
             prompt += "请简洁作答\n";
         }
 
+        console.log("[OpenAI答题] 请求:", baseUrl, "模型:", model);
+        notifyTip("正在调用 AI 答题...");
+
         return new Promise(resolve => {
             GM_xmlhttpRequest({
                 method: "POST",
-                url: apiUrl.replace(/\/+$/, "") + "/chat/completions",
+                url: baseUrl,
                 headers: {
                     "Content-Type": "application/json",
                     ...(apiKey ? { "Authorization": "Bearer " + apiKey } : {})
@@ -193,10 +206,28 @@ var GLOBAL = {
                 }),
                 timeout: 30000,
                 onload: function(r) {
+                    if (r.status !== 200) {
+                        let errMsg = "HTTP " + r.status;
+                        try {
+                            const err = JSON.parse(r.responseText);
+                            errMsg += ": " + (err.error && err.error.message ? err.error.message : r.responseText.substring(0, 100));
+                        } catch(e) {
+                            errMsg += ": " + r.responseText.substring(0, 100);
+                        }
+                        console.log("[OpenAI答题] 接口错误:", errMsg);
+                        notifyTip("AI接口错误: " + errMsg);
+                        resolve(null);
+                        return;
+                    }
                     try {
                         const res = JSON.parse(r.responseText);
                         const content = (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) || "";
-                        if (!content) { resolve(null); return; }
+                        if (!content) {
+                            console.log("[OpenAI答题] 返回空内容:", r.responseText.substring(0, 200));
+                            notifyTip("AI返回空内容，检查模型名是否正确");
+                            resolve(null);
+                            return;
+                        }
 
                         const answerText = content.trim();
                         let answers = [];
@@ -211,14 +242,27 @@ var GLOBAL = {
                             answers = [answerText];
                         }
 
+                        console.log("[OpenAI答题] 成功:", answers);
+                        notifyTip("AI答题成功");
                         resolve({ answer: { allAnswer: answers }, code: 200 });
                     } catch (e) {
-                        console.log("[OpenAI答题] 解析失败:", e);
+                        console.log("[OpenAI答题] 解析失败:", e, r.responseText.substring(0, 200));
+                        notifyTip("AI返回格式异常");
                         resolve(null);
                     }
                 },
                 onerror: function(e) {
-                    console.log("[OpenAI答题] 请求失败:", e);
+                    console.log("[OpenAI答题] 网络错误:", e);
+                    notifyTip("AI网络请求失败，检查API地址是否正确");
+                    resolve(null);
+                },
+                ontimeout: function() {
+                    console.log("[OpenAI答题] 请求超时");
+                    notifyTip("AI请求超时(30s)");
+                    resolve(null);
+                },
+                onabort: function() {
+                    console.log("[OpenAI答题] 请求被取消");
                     resolve(null);
                 }
             });
