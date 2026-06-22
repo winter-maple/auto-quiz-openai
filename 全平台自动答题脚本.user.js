@@ -314,7 +314,7 @@ var GLOBAL = {
                                 GM_setValue(item.hash, await url2Base64(item.url));
                             }
                         });
-                        GM_setValue("adList", JSON.stringify(obj.result));
+            
                     } catch (e) {}
                 }
             }
@@ -3611,25 +3611,6 @@ const tips = [
     }
     function addModal2(html, newPos, footerChildNode = false) {
         let headersNode = createContainer("hcsearche-modal-links");
-        let adNode = top.document.createElement("img");
-        let item = {
-            url: GM_getResourceURL("Img")
-        };
-        const getAdList = GM_getValue("adList");
-        if (getAdList) {
-            const adList = JSON.parse(getAdList);
-            let lastShown = GM_getValue("lastShown") || 0;
-            item = adList[lastShown];
-            GM_setValue("lastShown", (lastShown + 1) % adList.length);
-            item.base64 = GM_getValue(item.hash);
-        }
-        adNode.setAttribute("src", item.base64);
-        adNode.setAttribute("draggable", "false");
-        adNode.setAttribute("style", "display: block;width:321px");
-        if (item.click) {
-            adNode.setAttribute("onmousedown", "let ts=new Date().getTime();this.onmouseup=()=>{if(new Date().getTime()-ts>100){return false;};window.open('" + item.click + "','_black');this.onmouseup=undefined}");
-        }
-        headersNode.appendChild(adNode);
         let iframeNode = top.document.createElement("iframe");
         iframeNode.id = "iframeNode";
         iframeNode.setAttribute("width", "100%");
