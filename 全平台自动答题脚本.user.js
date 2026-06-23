@@ -3674,7 +3674,6 @@ new Vue({
         checkVersion();
     }
     function addModal2(html, newPos, footerChildNode = false) {
-        let headersNode = createContainer("hcsearche-modal-links");
         let iframeNode = top.document.createElement("iframe");
         iframeNode.id = "iframeNode";
         iframeNode.setAttribute("width", "100%");
@@ -3682,7 +3681,7 @@ new Vue({
         iframeNode.setAttribute("style", "height:" + GLOBAL.length + "px");
         iframeNode.setAttribute("frameborder", "0");
         iframeNode.srcdoc = html;
-        let contentNode = createContainer("content-modal", [ headersNode, iframeNode ]);
+        let contentNode = createContainer("content-modal", [ iframeNode ]);
         let modal = renderModal(contentNode);
         dragModel(modal);
         if (GM_getValue("hide")) {
