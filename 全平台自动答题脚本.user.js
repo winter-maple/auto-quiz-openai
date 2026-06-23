@@ -3629,6 +3629,8 @@ new Vue({
             window.parent.postMessage({
                 type: 'save_setting',
                 search_delay: this.search_delay,
+                gpt: '-1',
+                tiku_adapter: '',
                 openai_enabled: true,
                 openai_api_url: this.openai_api_url,
                 openai_api_key: this.openai_api_key,
