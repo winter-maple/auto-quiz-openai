@@ -250,19 +250,19 @@ var GLOBAL = {
         const apiUrl = GM_getValue("openai_api_url", "");
         if (!apiUrl) {
             notifyTip("请先配置 AI 接口（点击设置）");
-            return { answer: { allAnswer: [] }, code: 200 };
+            return { code: 0, result: { success: false, num: 0, answers: [] } };
         }
 
         try {
             const aiResult = await searchAnswerByOpenAI(data);
             if (aiResult && aiResult.answer && aiResult.answer.allAnswer && aiResult.answer.allAnswer.length > 0) {
-                return aiResult;
+                return { code: 0, result: { success: true, num: 1, answers: aiResult.answer.allAnswer } };
             }
-            return { answer: { allAnswer: [] }, code: 200 };
+            return { code: 0, result: { success: false, num: 0, answers: [] } };
         } catch (e) {
             console.log("[AI答题] 调用异常:", e);
             notifyTip("AI 答题失败: " + e.message);
-            return { answer: { allAnswer: [] }, code: 200 };
+            return { code: 0, result: { success: false, num: 0, answers: [] } };
         }
     }
     function catchAnswer(data) {
