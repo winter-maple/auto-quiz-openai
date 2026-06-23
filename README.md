@@ -2,7 +2,7 @@
 
 > **一键安装：** 点击下方链接，Tampermonkey / ScriptCat 会自动弹出安装提示 👇
 >
-> **[📥 点击安装脚本](https://github.com/winter-maple/auto-quiz-openai/releases/download/v2.0.0/%E5%85%A8%E5%B9%B3%E5%8F%B0%E8%87%AA%E5%8A%A8%E7%AD%94%E9%A2%98%E8%84%9A%E6%9C%AC.user.js)**
+> **[📥 点击安装脚本](https://github.com/winter-maple/auto-quiz-openai/releases/download/v2.0.0/user.js)**
 
 基于 [【万能】全平台自动答题脚本](https://scriptcat.org/zh-CN/script-show-page/616) v5.3.0.2 修改，**纯 AI 答题**，移除原有题库依赖。
 
