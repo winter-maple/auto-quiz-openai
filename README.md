@@ -1,41 +1,26 @@
-# 万能全平台自动答题脚本 - OpenAI 兼容接口版
+# 万能全平台自动答题脚本 - AI 纯净版
 
-> [!TIP]
 > **一键安装：** 点击下方链接，Tampermonkey / ScriptCat 会自动弹出安装提示 👇
 >
 > **[📥 点击安装脚本](https://raw.githubusercontent.com/winter-maple/auto-quiz-openai/master/%E5%85%A8%E5%B9%B3%E5%8F%B0%E8%87%AA%E5%8A%A8%E7%AD%94%E9%A2%98%E8%84%9A%E6%9C%AC.user.js)**
 
-基于 [【万能】全平台自动答题脚本](https://scriptcat.org/zh-CN/script-show-page/616) v5.3.0.2 修改，新增 **OpenAI 兼容接口答题**功能。
+基于 [【万能】全平台自动答题脚本](https://scriptcat.org/zh-CN/script-show-page/616) v5.3.0.2 修改，**纯 AI 答题**，移除原有题库依赖。
 
-## ✨ 新增功能
+## ✨ 特性
 
-在原有题库基础上，支持使用任意 OpenAI 兼容接口作为 AI 题库：
-
-- **OpenAI**（gpt-4o-mini 等）
-- **DeepSeek**（deepseek-chat）
-- **通义千问**（qwen-plus）
-- **Ollama**（本地部署，无需 API Key）
-- 任何兼容 `/v1/chat/completions` 的接口
+- 纯 AI 答题，无广告，无付费题库
+- 支持任意 OpenAI 兼容接口：OpenAI / DeepSeek / 通义千问 / Ollama 等
+- 暗色主题现代 UI
 
 ## 🔧 使用方式
 
 1. 安装脚本（Tampermonkey / ScriptCat）
-2. 点击答题面板的「更多设置」
-3. 填写 OpenAI 配置：
+2. 打开答题页面，点击面板上的「设置」
+3. 填写 AI 配置：
    - **API 地址**：如 `https://api.openai.com/v1`
    - **API Key**：你的 key（本地 Ollama 可留空）
    - **模型名**：如 `gpt-4o-mini`、`deepseek-chat`
-4. 保存即可生效
-
-## 📋 工作逻辑
-
-```
-搜题 → 有 OpenAI 配置？ → 是 → 调 AI → 有结果？ → 返回
-                    ↓ 否              ↓ 否
-              走原有付费/免费题库 ←←←←←┘
-```
-
-优先使用 AI 答题，未配置或调用失败时自动回退到原有题库。
+4. 保存即可
 
 ## 📖 支持平台
 
