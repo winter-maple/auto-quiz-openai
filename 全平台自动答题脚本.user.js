@@ -3341,268 +3341,332 @@ var GLOBAL = {
     function showPanel() {
         let html = `
         <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
       ` + GM_getResourceText("ElementUiCss") + `
-      .el-table .warning-row {
-        background: oldlace;
+      :root {
+        --bg-primary: #1a1a2e;
+        --bg-secondary: #16213e;
+        --bg-card: #0f3460;
+        --accent: #e94560;
+        --accent-hover: #ff6b81;
+        --text-primary: #eee;
+        --text-secondary: #a0a0b0;
+        --success: #2ed573;
+        --warning: #ffa502;
+        --danger: #ff4757;
+        --border: rgba(255,255,255,0.08);
       }
-      .message-update-tip {
-        width: 300px;
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        overflow: hidden;
       }
-      .el-table .success-row {
-        background: #f0f9eb;
+      #app { height: 100%; }
+      .token-bar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
       }
-      .el-table .primary-row {
-        background: rgb(236, 245, 255);
+      .token-bar label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+      .token-bar input {
+        flex: 1; background: var(--bg-primary); border: 1px solid var(--border);
+        color: var(--text-primary); padding: 6px 10px; border-radius: 6px;
+        font-size: 13px; outline: none;
       }
-      *{
-        padding: 0px;
-        margin: 0px;
+      .token-bar input:focus { border-color: var(--accent); }
+      .token-bar .btn-ok {
+        background: var(--accent); color: #fff; border: none; padding: 6px 14px;
+        border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
       }
-      .el-button{
-        margin-bottom: 4px;
+      .token-bar .btn-ok:hover { background: var(--accent-hover); }
+      .status-bar {
+        display: flex; align-items: center; gap: 6px;
+        padding: 8px 14px; font-size: 12px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
       }
-      .el-button + .el-button{
-        margin-left: 0px;
+      .status-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--success); flex-shrink: 0;
+        animation: pulse 2s infinite;
       }
-
-      .el-form
-      -item-confim{
-        display: flex;
-        justify-content: center
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+      .status-text { flex: 1; color: var(--text-secondary); }
+      .action-bar {
+        display: flex; gap: 6px; padding: 8px 14px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
       }
-      .drag_auto_answer-class{
-        width: 321px;
-        background-color: rgb(255, 255, 255);
-        overflow-x: hidden;
-        overflow-y: scroll;
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        right: -17px;
+      .btn {
+        padding: 5px 12px; border-radius: 6px; border: none;
+        font-size: 11px; font-weight: 600; cursor: pointer;
+      }
+      .btn-pause { background: var(--success); color: #fff; }
+      .btn-pause.active { background: var(--warning); }
+      .btn-skip { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+      .btn-setting { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); margin-left: auto; }
+      .btn-auto { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+      .btn-auto.active { background: var(--warning); color: #000; }
+      .result-area { flex: 1; overflow-y: auto; }
+      .result-area::-webkit-scrollbar { width: 4px; }
+      .result-area::-webkit-scrollbar-thumb { background: var(--bg-card); border-radius: 2px; }
+      .result-table { width: 100%; border-collapse: collapse; }
+      .result-table th {
+        position: sticky; top: 0;
+        background: var(--bg-secondary); color: var(--text-secondary);
+        font-size: 11px; padding: 8px 10px; text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+      .result-table td {
+        padding: 7px 10px; font-size: 11px;
+        border-bottom: 1px solid var(--border);
+      }
+      .result-table .col-idx { width: 36px; text-align: center; color: var(--text-secondary); }
+      .row-success td { border-left: 3px solid var(--success); }
+      .row-warning td { border-left: 3px solid var(--warning); }
+      .btn-view-similar {
+        background: var(--danger); color: #fff; border: none;
+        padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;
+      }
+      .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+      .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 10000; backdrop-filter: blur(4px);
+      }
+      .modal-box {
+        background: var(--bg-secondary); border-radius: 12px;
+        width: 340px; max-height: 80vh; overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        border: 1px solid var(--border);
+      }
+      .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 20px; border-bottom: 1px solid var(--border);
+      }
+      .modal-header h3 { font-size: 15px; }
+      .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; }
+      .modal-close:hover { color: var(--accent); }
+      .modal-body { padding: 16px 20px; }
+      .form-group { margin-bottom: 14px; }
+      .form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+      .form-group input {
+        width: 100%; background: var(--bg-primary); border: 1px solid var(--border);
+        color: var(--text-primary); padding: 8px 12px; border-radius: 8px; font-size: 13px; outline: none;
+      }
+      .form-group input:focus { border-color: var(--accent); }
+      .section-title {
+        font-size: 12px; font-weight: 600; color: var(--accent);
+        margin: 16px 0 10px; padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-footer {
+        display: flex; justify-content: flex-end; gap: 8px;
+        padding: 12px 20px; border-top: 1px solid var(--border);
+      }
+      .btn-cancel {
+        background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border);
+        padding: 7px 18px; border-radius: 8px; font-size: 12px; cursor: pointer;
+      }
+      .btn-save {
+        background: var(--accent); color: #fff; border: none;
+        padding: 7px 18px; border-radius: 8px; font-size: 12px; cursor: pointer;
+      }
+      .btn-save:hover { background: var(--accent-hover); }
+      .similar-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center; z-index: 10001;
+      }
+      .similar-box {
+        background: var(--bg-secondary); border-radius: 10px;
+        width: 280px; max-height: 300px; overflow-y: auto;
+        padding: 16px; border: 1px solid var(--border);
       }
     </style>
 </head>
 <body>
 <div id="app">
-<el-dialog title="更多设置" :visible.sync="show_setting" width="300px">
-<el-form ref="form" label-width="100px" size="mini">
-  <el-form-item label="ChatGPT答题">
-    <el-select v-model="gpt">
-      <el-option label="不开启" value="-1"></el-option>
-      <el-option label="使用豆包" value="doubao"></el-option>
-      <el-option label="使用DeepSeek" value="deepseek"></el-option>
-      <el-option label="使用通义千问" value="qwen"></el-option>
-
-    </el-select>
-  </el-form-item>
-    <el-form-item label="搜题延迟(秒)">
-    <el-input-number v-model="search_delay" :min="0" :max="30"></el-input-number>
-   </el-form-item>
- <el-popover
-    ref="popover"
-    placement="top-start"
-    title="tikuAdapter题库适配器"
-    width="200"
-    trigger="hover"
-    content="大学生网课题库接口适配器：聚合多家题库，更精确的查题。详细查看 https://github.com/DokiDoki1103/tikuAdapter">
-  </el-popover>
-  <el-form-item v-popover:popover label="题库适配器url">
-    <el-input v-model="tiku_adapter"></el-input>
-  </el-form-item>
-
-  <el-divider content-position="left">OpenAI 兼容接口答题</el-divider>
-  <el-popover ref="popover_openai" placement="top-start" title="OpenAI兼容接口" width="220" trigger="hover"
-    content="支持 OpenAI / DeepSeek / 通义千问 / Ollama 等任何 OpenAI 兼容接口。开启后优先使用 AI 答题，失败则回退到原有题库。">
-  </el-popover>
-  <el-form-item v-popover:popover_openai label="启用AI答题">
-    <el-switch v-model="openai_enabled"></el-switch>
-    <span style="font-size:11px;color:#999;margin-left:8px">{{ openai_enabled ? '已开启' : '已关闭' }}</span>
-  </el-form-item>
-  <el-form-item label="API地址">
-    <el-input v-model="openai_api_url" placeholder="如 https://api.openai.com/v1"></el-input>
-  </el-form-item>
-  <el-form-item label="API Key">
-    <el-input v-model="openai_api_key" type="password" placeholder="本地Ollama可留空"></el-input>
-  </el-form-item>
-  <el-form-item label="模型名">
-    <el-input v-model="openai_model" placeholder="如 gpt-4o-mini / deepseek-chat"></el-input>
-  </el-form-item>
-
-</el-form>
-<div slot="footer" class="dialog-footer">
-    <el-button size="mini" @click="show_setting = false">取消</el-button>
-    <el-button size="mini" type="primary" @click="save_setting">保存</el-button>
-</div>
-</el-dialog>
-    <div id="drag_auto_answer" class="drag_auto_answer-class">
-        <el-main style="min-width: 321px;padding: 15px 0px 0px; z-index: 99999;">
-            <el-row>
-                <el-form>
-                    <el-form-item class="el-form-item-confim" label="请输入token"  style="margin-top: -20px" :prop="passw">
-                        <el-input :type="passw" v-model="opt.token" placeholder="请输入内容" style="max-width: 130px" size="mini" ></el-input>
-                        <el-button @click="btnClick(opt.token,'opt.confim')" size="mini" type="warning" @mousedown.native="passw = 'text'" @mouseup.native="passw = 'password'">确定</el-button>
-                    </el-form-item>
-                </el-form>
-            </el-row>
-            <el-row style="margin-top: -20px;margin-bottom: 5px;display: flex">
-                <el-alert
-                        style="display: block"
-                        :title="tip"
-                        :closable="false"
-                        type="success">
-                    <el-button v-if="need_jump" @click="btnClick(opt.jump,'opt.jump')" size="mini" type="info">跳过本题</el-button>
-                    <el-button v-if="!hidden" @click="btnClick(opt.auto_jump,'opt.auto_jump')" size="mini" type="warning">{{opt.auto_jump ? '停止自动切换': '开启自动切换'}}</el-button>
-                </el-alert>
-            </el-row>
-            <el-row>
-                <el-button v-if="!hidden" @click="btnClick(opt.stop,'opt.stop')" size="mini" type="success">{{!opt.stop ? '暂停答题': '继续答题'}}</el-button>
-                <el-button @click="btnClick(opt.start_pay,'opt.start_pay')" size="mini" type="primary">{{opt.start_pay ?'关闭收费题库' : '开启收费题库'}}</el-button>
-                <el-button size="mini" type="danger"><a style="text-decoration:none;color: aliceblue" target="_blank" href="https://lyck6.cn/pay" >获取积分</a></el-button>
-                <el-button @click="show_setting = true" size="mini" type="info">更多设置</el-button>
-            </el-row>
-
-            <el-table size="mini" :data="tableData" style="width: 100%;margin-top: 5px" :row-class-name="tableRowClassName">
-                <el-table-column prop="index" label="题号" width="45"></el-table-column>
-                <el-table-column prop="question" label="问题" width="130">
-                  <template slot-scope="scope">
-                        <div style="font-size: 11px;" v-html="scope.row.question"></div>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="answer" label="答案" width="130">
-                 <template slot-scope="scope">
-                     <el-popover
-                        v-if="scope.row.style === 'warning-row'"
-                        placement="bottom-end"
-                        title="相似答案"
-                        width="240"
-                        trigger="click">
-                        <div style="font-size: 10px;height: 220px; overflow: auto;" v-html="scope.row.answer"></div>
-                        <el-button slot="reference" size="small" type="danger">查看相关答案</el-button>
-                     </el-popover>
-                     <p v-if="scope.row.style != 'warning-row'" style="font-size: 11px;" v-html="scope.row.answer"></p>
-                  </template>
-                </el-table-column>
-            </el-table>
-        </el-main>
+  <div class="modal-overlay" v-if="show_setting" @click.self="show_setting=false">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>设置</h3>
+        <button class="modal-close" @click="show_setting=false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>搜题延迟（秒）</label>
+          <input type="number" v-model.number="search_delay" min="0" max="30" style="width:80px">
+        </div>
+        <div class="section-title">AI 答题配置</div>
+        <div class="form-group">
+          <label>API 地址</label>
+          <input v-model="openai_api_url" placeholder="https://api.openai.com/v1">
+        </div>
+        <div class="form-group">
+          <label>API Key</label>
+          <input v-model="openai_api_key" type="password" placeholder="本地 Ollama 可留空">
+        </div>
+        <div class="form-group">
+          <label>模型名</label>
+          <input v-model="openai_model" placeholder="gpt-4o-mini / deepseek-chat">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" @click="show_setting=false">取消</button>
+        <button class="btn-save" @click="save_setting">保存</button>
+      </div>
     </div>
+  </div>
+  <div class="similar-overlay" v-if="showSimilar" @click.self="showSimilar=false">
+    <div class="similar-box">
+      <h4>相似答案</h4>
+      <div v-html="similarContent"></div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;height:100%;">
+    <div class="token-bar">
+      <label>Token</label>
+      <input :type="passw" v-model="opt.token" placeholder="输入 Token" @mousedown="passw='text'" @mouseup="passw='password'" @mouseleave="passw='password'">
+      <button class="btn-ok" @click="btnClick(opt.token,'opt.confim')">确定</button>
+    </div>
+    <div class="status-bar">
+      <span class="status-dot"></span>
+      <span class="status-text">{{ tip }}</span>
+      <button v-if="need_jump" class="btn btn-skip" @click="btnClick(null,'opt.jump')">跳过</button>
+      <button v-if="!hidden" class="btn btn-auto" :class="{active: opt.auto_jump}" @click="btnClick(null,'opt.auto_jump')">
+        {{ opt.auto_jump ? '自动切换中' : '自动切换' }}
+      </button>
+    </div>
+    <div class="action-bar" v-if="!hidden">
+      <button class="btn btn-pause" :class="{active: opt.stop}" @click="btnClick(null,'opt.stop')">
+        {{ opt.stop ? '继续' : '暂停' }}
+      </button>
+      <button class="btn btn-setting" @click="show_setting=true">设置</button>
+    </div>
+    <div class="action-bar" v-else>
+      <button class="btn btn-setting" @click="show_setting=true" style="margin-left:auto">设置</button>
+    </div>
+    <div class="result-area">
+      <table class="result-table" v-if="tableData.length">
+        <thead><tr><th class="col-idx">#</th><th>题目</th><th>答案</th></tr></thead>
+        <tbody>
+          <tr v-for="row in tableData" :key="row.index" :class="rowClass(row)">
+            <td class="col-idx">{{ row.index }}</td>
+            <td v-html="row.question"></td>
+            <td>
+              <button v-if="row.style==='warning-row'" class="btn-view-similar" @click="viewSimilar(row)">查看相似</button>
+              <span v-else v-html="row.answer"></span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty-state">等待答题...</div>
+    </div>
+  </div>
 </div>
 </body>
 <script>` + GM_getResourceText("Vue") + `</script>
 <script>` + GM_getResourceText("ElementUi") + `</script>
 <script>
-const tips = [
-    '想要隐藏此搜索框，按键盘的⬆箭头，想要显示按⬇箭头哦',
-    '想要永久隐藏此搜索框，按键盘的左箭头，想要显示在屏幕中央按右箭头哦',
-    '想要自定义搜索框的长度可以更改代码设置参数:length',
-    '脚本代码设置页预留多个自定义参数哦，可自行更改',
-    '脚本已经适配tikuAdapter了,可点击【更多设置】配置请求URL'
-]
-    new Vue({
-        el: '#app',
-        data: function () {
-            return {
-                tiku_adapter: '` + (GM_getValue("tiku_adapter") || "") + `',
-                search_delay: ` + (isNaN(parseInt(GM_getValue("search_delay"))) ? 2 : GM_getValue("search_delay")) + `,
-                gpt: '` + (GM_getValue("gpt") || -1) + `',
-                openai_enabled: ` + (GM_getValue("openai_enabled") ? "true" : "false") + `,
-                openai_api_url: '` + (GM_getValue("openai_api_url") || "") + `',
-                openai_api_key: '` + (GM_getValue("openai_api_key") || "") + `',
-                openai_model: '` + (GM_getValue("openai_model") || "") + `',
-                show_setting: false,
-                hidden: false,
-                need_jump: false,
-                tip: tips[Math.floor(Math.random()*tips.length)],
-                opt:{
-                    token: '` + GM_getValue("token") + `',
-                    auto_jump: ` + GM_getValue("auto_jump") + `,
-                    stop: false,
-                    start_pay: ` + GM_getValue("start_pay") + `
-                },
-                input: '',
-                visible: false,
-                tableData: [],
-                passw:"password"
-            }
-        },
-        created(){
-            /**
-            * 
-            * @param type 消息类型
-            * @param receiveParams 消息参数
-            */
-            window['vueDefinedProp'] = (type,receiveParams) => {
-                if (type === 'push'){
-                    let length = this.tableData.length
-                    this.tableData.push({index: length + 1,question: receiveParams.question,answer: receiveParams.answer,style:receiveParams.style})
-                }else if (type === 'clear'){
-                    this.tableData = []
-                }else if (type === 'tip'){
-                    if (receiveParams.type && receiveParams.type === 'jump'){
-                         window.parent.postMessage({"type": 'jump'}, '*');
-                    }else if (receiveParams.type && receiveParams.type === 'error'){
-                         this.need_jump = true
-                    }else if (receiveParams.type && receiveParams.type === 'hidden'){
-                         this.hidden = true
-                    }else if (receiveParams.type && receiveParams.type === 'stop'){
-                         this.opt.stop = true
-                    }
-                    this.tip = receiveParams.tip
-                }else if (type === 'stop'){
-                    this.opt.stop = receiveParams
-                }else if (type === 'start_pay'){
-                    this.opt.start_pay = receiveParams
-                }else if (type === 'update'){
-                    this.updateScript(receiveParams.v1,receiveParams.v2,receiveParams.href)
-                }
-            }
-        },
-        methods: {
-            save_setting(){
-                 window.parent.postMessage({type: 'save_setting',search_delay:this.search_delay,gpt:this.gpt,tiku_adapter:this.tiku_adapter,openai_enabled:this.openai_enabled,openai_api_url:this.openai_api_url,openai_api_key:this.openai_api_key,openai_model:this.openai_model}, '*');
-                 this.show_setting = false
+const tips = ['按 ↑ 隐藏面板，↓ 显示', '点击「设置」配置 AI 接口']
+new Vue({
+    el: '#app',
+    data: function () {
+        return {
+            search_delay: ` + (isNaN(parseInt(GM_getValue("search_delay"))) ? 2 : GM_getValue("search_delay")) + `,
+            openai_api_url: '` + (GM_getValue("openai_api_url") || "") + `',
+            openai_api_key: '` + (GM_getValue("openai_api_key") || "") + `',
+            openai_model: '` + (GM_getValue("openai_model") || "") + `',
+            show_setting: false,
+            hidden: false,
+            need_jump: false,
+            tip: tips[Math.floor(Math.random()*tips.length)],
+            opt:{
+                token: '` + GM_getValue("token") + `',
+                auto_jump: ` + GM_getValue("auto_jump") + `,
+                stop: false
             },
-            updateScript(currentVersion,newVersion,href){
-              this.$confirm('您当前版本为'+currentVersion+'最新版本为'+newVersion+',推荐下载更新', '脚本有更新', {
-                customClass: 'message-update-tip',
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning'
-                }).then(() => {
-                   window.open(href)
-                });
-              setTimeout(()=>{
-                  this.$msgbox.close();
-              },5000)
-            },
-            tableRowClassName({row, rowIndex}) {
-                return row.style
-            },
-            btnClick(e,type){
-                if (type === 'opt.stop'){//暂停搜索
-                    this.opt.stop = !this.opt.stop
-                    this.tip = this.opt.stop? '已暂停搜索': '继续搜索'
-                    window.parent.postMessage({type: 'stop',val:this.opt.stop}, '*');
-                }else if (type === 'opt.start_pay'){
-                     window.parent.postMessage({type: 'start_pay',flag:!this.opt.start_pay}, '*');
-                }else if (type === 'opt.auto_jump'){//开启自动切换
-                    this.opt.auto_jump = ! this.opt.auto_jump
-                    window.parent.postMessage({type: 'auto_jump',flag:this.opt.auto_jump}, '*');
-                }else if (type === 'opt.jump'){//跳过本题
+            tableData: [],
+            passw: 'password',
+            showSimilar: false,
+            similarContent: ''
+        }
+    },
+    created(){
+        window['vueDefinedProp'] = (type, receiveParams) => {
+            if (type === 'push'){
+                let length = this.tableData.length
+                this.tableData.push({index: length + 1, question: receiveParams.question, answer: receiveParams.answer, style: receiveParams.style})
+            } else if (type === 'clear'){
+                this.tableData = []
+            } else if (type === 'tip'){
+                if (receiveParams.type === 'jump'){
                     window.parent.postMessage({type: 'jump'}, '*');
-                    this.need_jump = false
-                }else if (type === 'opt.confim'){
-                    window.parent.postMessage({type: 'confim',token:e}, '*');
+                } else if (receiveParams.type === 'error'){
+                    this.need_jump = true
+                } else if (receiveParams.type === 'hidden'){
+                    this.hidden = true
+                } else if (receiveParams.type === 'stop'){
+                    this.opt.stop = true
                 }
+                this.tip = receiveParams.tip
+            } else if (type === 'stop'){
+                this.opt.stop = receiveParams
+            } else if (type === 'update'){
+                this.updateScript(receiveParams.v1, receiveParams.v2, receiveParams.href)
             }
         }
-    })
+    },
+    methods: {
+        save_setting(){
+            window.parent.postMessage({
+                type: 'save_setting',
+                search_delay: this.search_delay,
+                openai_enabled: true,
+                openai_api_url: this.openai_api_url,
+                openai_api_key: this.openai_api_key,
+                openai_model: this.openai_model
+            }, '*');
+            this.show_setting = false
+        },
+        updateScript(currentVersion, newVersion, href){
+            if (confirm('当前版本: ' + currentVersion + '\n最新版本: ' + newVersion + '\n\n是否前往更新？')) {
+                window.open(href)
+            }
+        },
+        rowClass(row){
+            if (row.style === 'success-row' || row.style === 'primary-row') return 'row-success'
+            if (row.style === 'warning-row') return 'row-warning'
+            return ''
+        },
+        viewSimilar(row){
+            this.similarContent = row.answer
+            this.showSimilar = true
+        },
+        btnClick(e, type){
+            if (type === 'opt.stop'){
+                this.opt.stop = !this.opt.stop
+                this.tip = this.opt.stop ? '已暂停' : '继续搜索'
+                window.parent.postMessage({type: 'stop', val: this.opt.stop}, '*');
+            } else if (type === 'opt.auto_jump'){
+                this.opt.auto_jump = !this.opt.auto_jump
+                window.parent.postMessage({type: 'auto_jump', flag: this.opt.auto_jump}, '*');
+            } else if (type === 'opt.jump'){
+                window.parent.postMessage({type: 'jump'}, '*');
+                this.need_jump = false
+            } else if (type === 'opt.confim'){
+                window.parent.postMessage({type: 'confim', token: e}, '*');
+            }
+        }
+    }
+})
 </script>
 </html>
 `;
