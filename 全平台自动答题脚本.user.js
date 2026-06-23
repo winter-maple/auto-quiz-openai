@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        【万能】全平台自动答题脚本
-// @version      2.0.0
+// @version      5.3.0.2
 // @namespace    自动答题
 // @description  支持【超星学习通】【智慧树】【职教云系列】【雨课堂】【考试星】【168网校】【继续教育类】【绎通云课堂】【九江系列】【柠檬文才】【亿学宝云】【优课学堂】【小鹅通】【安徽继续教育】 【上海开放大学】 【华侨大学自考网络助学平台】【良师在线】【和学在线】【人卫慕课】【国家开放大学】【山财培训网（继续教育）】【浙江省高等学校在线开放课程共享平台】【国地质大学远程与继续教育学院】【重庆大学网络教育学院】【浙江省高等教育自学考试网络助学平台】 【湖南高等学历继续教育】 【优学院】 【学起系列】【青书学堂】 【学堂在线】【英华学堂】【广开网络教学平台】等平台的测验考试，内置题库，自动答题功能全聚合
 // @author       万能
@@ -51,7 +51,38 @@ var GLOBAL = {
     //默认搜索框的长度，单位px可以适当调整
     length: 450,
     //自定义题库接口,可以自己新增接口，以下仅作为实例 返回的比如是一个完整的答案的列表，如果不复合规则可以自定义传格式化函数 例如 [['答案'],['答案2'],['多选A','多选B']]
-    answerApi: {}
+    answerApi: {
+        tikuAdapter: data => {
+            const tiku_adapter = GM_getValue("tiku_adapter");
+            const url = tiku_adapter && !tiku_adapter.includes("undefined") ? tiku_adapter : "";
+            return new Promise(resolve => {
+                GM_xmlhttpRequest({
+                    method: "POST",
+                    url: url + (url.includes("?") ? "&" : "?") + "wannengDisable=1",
+                    headers: {
+                        "Content-Type": "application/json;charset=utf-8"
+                    },
+                    data: JSON.stringify({
+                        question: data.question,
+                        options: data.options,
+                        type: data.type
+                    }),
+                    onload: function(r) {
+                        try {
+                            const res = JSON.parse(r.responseText);
+                            resolve(res.answer.allAnswer);
+                        } catch (e) {
+                            resolve([]);
+                        }
+                    },
+                    onerror: function(e) {
+                        console.log(e);
+                        resolve([]);
+                    }
+                });
+            });
+        }
+    }
 };
 
 (function() {
@@ -247,23 +278,21 @@ var GLOBAL = {
     async function searchAnswer(data) {
         data.location = location.href;
 
-        const apiUrl = GM_getValue("openai_api_url", "");
-        if (!apiUrl) {
-            notifyTip("请先配置 AI 接口（点击设置）");
-            return { code: 0, result: { success: false, num: 0, answers: [] } };
+        // 优先使用 OpenAI 兼容接口（需要手动开启）
+        if (GM_getValue("openai_enabled") && GM_getValue("openai_api_url", "")) {
+            try {
+                const aiResult = await searchAnswerByOpenAI(data);
+                if (aiResult && aiResult.answer && aiResult.answer.allAnswer && aiResult.answer.allAnswer.length > 0) {
+                    return aiResult;
+                }
+            } catch (e) {
+                console.log("[OpenAI答题] 调用异常，回退到原有题库:", e);
+            }
         }
 
-        try {
-            const aiResult = await searchAnswerByOpenAI(data);
-            if (aiResult && aiResult.answer && aiResult.answer.allAnswer && aiResult.answer.allAnswer.length > 0) {
-                return { code: 0, result: { success: true, num: 1, answers: aiResult.answer.allAnswer } };
-            }
-            return { code: 0, result: { success: false, num: 0, answers: [] } };
-        } catch (e) {
-            console.log("[AI答题] 调用异常:", e);
-            notifyTip("AI 答题失败: " + e.message);
-            return { code: 0, result: { success: false, num: 0, answers: [] } };
-        }
+        const token = GM_getValue("start_pay") ? GM_getValue("token") || 0 : 0;
+        const uri = token.length === 10 ? "/autoAnswer/" + token + "?model=" + (GM_getValue("gpt") || -1) : "/autoFreeAnswer";
+        return await instance.post(baseService + uri, data);
     }
     function catchAnswer(data) {
         /[013]/.test(data.type) && instance.post("/catch", data);
@@ -314,7 +343,7 @@ var GLOBAL = {
                                 GM_setValue(item.hash, await url2Base64(item.url));
                             }
                         });
-            
+                        GM_setValue("adList", JSON.stringify(obj.result));
                     } catch (e) {}
                 }
             }
@@ -3348,84 +3377,93 @@ var GLOBAL = {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
       ` + GM_getResourceText("ElementUiCss") + `
-      :root {
-        --bg: #1e1e2e;
-        --bg2: #282840;
-        --bg3: #313150;
-        --accent: #e94560;
-        --text: #cdd6f4;
-        --text2: #a6adc8;
-        --success: #a6e3a1;
-        --warning: #f9e2af;
-        --danger: #f38ba8;
-        --border: #45475a;
+      .el-table .warning-row {
+        background: oldlace;
       }
-      * { padding: 0; margin: 0; box-sizing: border-box; }
-      body { background: var(--bg) !important; color: var(--text) !important; }
-      .el-table .warning-row { background: rgba(249,226,175,0.1) !important; }
-      .el-table .success-row { background: rgba(166,227,161,0.1) !important; }
-      .el-table .primary-row { background: rgba(137,180,250,0.1) !important; }
-      .el-table { background: transparent !important; color: var(--text) !important; }
-      .el-table th { background: var(--bg2) !important; color: var(--text2) !important; border-color: var(--border) !important; }
-      .el-table td { border-color: var(--border) !important; color: var(--text) !important; }
-      .el-table--enable-row-hover .el-table__body tr:hover > td { background: var(--bg3) !important; }
-      .el-button { margin-bottom: 4px; }
-      .el-button + .el-button { margin-left: 0px; }
-      .el-button--mini { padding: 5px 10px; }
-      .el-alert { background: var(--bg2) !important; border-color: var(--border) !important; }
-      .el-alert__title { color: var(--text) !important; font-size: 12px !important; }
-      .el-form-item__label { color: var(--text2) !important; font-size: 12px !important; }
-      .el-input__inner { background: var(--bg3) !important; border-color: var(--border) !important; color: var(--text) !important; }
-      .el-input__inner:focus { border-color: var(--accent) !important; }
-      .el-select .el-input .el-select__caret { color: var(--text2) !important; }
-      .el-dialog { background: var(--bg2) !important; border-radius: 12px !important; }
-      .el-dialog__header { border-bottom: 1px solid var(--border) !important; }
-      .el-dialog__title { color: var(--text) !important; }
-      .el-dialog__body { padding: 20px !important; }
-      .el-form-item { margin-bottom: 16px !important; }
-      .el-divider__text { background: var(--bg2) !important; color: var(--accent) !important; }
-      .el-divider { border-color: var(--border) !important; }
-      .el-switch__core { border-color: var(--border) !important; }
-      .el-switch.is-checked .el-switch__core { background: var(--accent) !important; border-color: var(--accent) !important; }
-      .el-input-number { width: 100px !important; }
-      .el-input-number .el-input__inner { background: var(--bg3) !important; color: var(--text) !important; }
-      .el-popover { background: var(--bg2) !important; border-color: var(--border) !important; color: var(--text) !important; }
-      .el-popover__title { color: var(--text) !important; }
-      .el-message-box { background: var(--bg2) !important; }
-      .el-message-box__title { color: var(--text) !important; }
-      .el-message-box__content { color: var(--text2) !important; }
-      .el-form-item-confim { display: flex; justify-content: center; }
-      .el-main { background: var(--bg) !important; padding: 10px !important; }
-      .drag_auto_answer-class {
+      .message-update-tip {
+        width: 300px;
+      }
+      .el-table .success-row {
+        background: #f0f9eb;
+      }
+      .el-table .primary-row {
+        background: rgb(236, 245, 255);
+      }
+      *{
+        padding: 0px;
+        margin: 0px;
+      }
+      .el-button{
+        margin-bottom: 4px;
+      }
+      .el-button + .el-button{
+        margin-left: 0px;
+      }
+
+      .el-form
+      -item-confim{
+        display: flex;
+        justify-content: center
+      }
+      .drag_auto_answer-class{
         width: 321px;
-        background: var(--bg);
+        background-color: rgb(255, 255, 255);
         overflow-x: hidden;
         overflow-y: scroll;
         position: absolute;
-        top: 0; bottom: 0; left: 0; right: -17px;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: -17px;
       }
-      a { color: var(--accent) !important; }
     </style>
 </head>
 <body>
 <div id="app">
-<el-dialog title="设置" :visible.sync="show_setting" width="300px">
-<el-form ref="form" label-width="80px" size="mini">
-  <el-form-item label="搜题延迟">
+<el-dialog title="更多设置" :visible.sync="show_setting" width="300px">
+<el-form ref="form" label-width="100px" size="mini">
+  <el-form-item label="ChatGPT答题">
+    <el-select v-model="gpt">
+      <el-option label="不开启" value="-1"></el-option>
+      <el-option label="使用豆包" value="doubao"></el-option>
+      <el-option label="使用DeepSeek" value="deepseek"></el-option>
+      <el-option label="使用通义千问" value="qwen"></el-option>
+
+    </el-select>
+  </el-form-item>
+    <el-form-item label="搜题延迟(秒)">
     <el-input-number v-model="search_delay" :min="0" :max="30"></el-input-number>
-    <span style="font-size:11px;color:#666;margin-left:4px">秒</span>
+   </el-form-item>
+ <el-popover
+    ref="popover"
+    placement="top-start"
+    title="tikuAdapter题库适配器"
+    width="200"
+    trigger="hover"
+    content="大学生网课题库接口适配器：聚合多家题库，更精确的查题。详细查看 https://github.com/DokiDoki1103/tikuAdapter">
+  </el-popover>
+  <el-form-item v-popover:popover label="题库适配器url">
+    <el-input v-model="tiku_adapter"></el-input>
   </el-form-item>
 
-  <el-divider content-position="left">AI 答题配置</el-divider>
+  <el-divider content-position="left">OpenAI 兼容接口答题</el-divider>
+  <el-popover ref="popover_openai" placement="top-start" title="OpenAI兼容接口" width="220" trigger="hover"
+    content="支持 OpenAI / DeepSeek / 通义千问 / Ollama 等任何 OpenAI 兼容接口。开启后优先使用 AI 答题，失败则回退到原有题库。">
+  </el-popover>
+  <el-form-item v-popover:popover_openai label="启用AI答题">
+    <el-switch v-model="openai_enabled"></el-switch>
+    <span style="font-size:11px;color:#999;margin-left:8px">{{ openai_enabled ? '已开启' : '已关闭' }}</span>
+  </el-form-item>
   <el-form-item label="API地址">
-    <el-input v-model="openai_api_url" placeholder="https://api.openai.com/v1"></el-input>
+    <el-input v-model="openai_api_url" placeholder="如 https://api.openai.com/v1"></el-input>
   </el-form-item>
   <el-form-item label="API Key">
     <el-input v-model="openai_api_key" type="password" placeholder="本地Ollama可留空"></el-input>
   </el-form-item>
   <el-form-item label="模型名">
-    <el-input v-model="openai_model" placeholder="gpt-4o-mini / deepseek-chat"></el-input>
+    <el-input v-model="openai_model" placeholder="如 gpt-4o-mini / deepseek-chat"></el-input>
   </el-form-item>
+
 </el-form>
 <div slot="footer" class="dialog-footer">
     <el-button size="mini" @click="show_setting = false">取消</el-button>
@@ -3453,8 +3491,10 @@ var GLOBAL = {
                 </el-alert>
             </el-row>
             <el-row>
-                <el-button v-if="!hidden" @click="btnClick(opt.stop,'opt.stop')" size="mini" :type="opt.stop ? 'warning' : 'success'">{{!opt.stop ? '暂停': '继续'}}</el-button>
-                <el-button @click="show_setting = true" size="mini" type="info">设置</el-button>
+                <el-button v-if="!hidden" @click="btnClick(opt.stop,'opt.stop')" size="mini" type="success">{{!opt.stop ? '暂停答题': '继续答题'}}</el-button>
+                <el-button @click="btnClick(opt.start_pay,'opt.start_pay')" size="mini" type="primary">{{opt.start_pay ?'关闭收费题库' : '开启收费题库'}}</el-button>
+                <el-button size="mini" type="danger"><a style="text-decoration:none;color: aliceblue" target="_blank" href="https://lyck6.cn/pay" >获取积分</a></el-button>
+                <el-button @click="show_setting = true" size="mini" type="info">更多设置</el-button>
             </el-row>
 
             <el-table size="mini" :data="tableData" style="width: 100%;margin-top: 5px" :row-class-name="tableRowClassName">
@@ -3487,9 +3527,11 @@ var GLOBAL = {
 <script>` + GM_getResourceText("ElementUi") + `</script>
 <script>
 const tips = [
-    '按 ↑ 隐藏面板，↓ 显示',
-    '按 ← 永久隐藏，→ 恢复居中',
-    '点击「设置」配置 AI 接口'
+    '想要隐藏此搜索框，按键盘的⬆箭头，想要显示按⬇箭头哦',
+    '想要永久隐藏此搜索框，按键盘的左箭头，想要显示在屏幕中央按右箭头哦',
+    '想要自定义搜索框的长度可以更改代码设置参数:length',
+    '脚本代码设置页预留多个自定义参数哦，可自行更改',
+    '脚本已经适配tikuAdapter了,可点击【更多设置】配置请求URL'
 ]
     new Vue({
         el: '#app',
@@ -3552,7 +3594,7 @@ const tips = [
         },
         methods: {
             save_setting(){
-                 window.parent.postMessage({type: 'save_setting',search_delay:this.search_delay,gpt:'-1',tiku_adapter:'',openai_enabled:true,openai_api_url:this.openai_api_url,openai_api_key:this.openai_api_key,openai_model:this.openai_model}, '*');
+                 window.parent.postMessage({type: 'save_setting',search_delay:this.search_delay,gpt:this.gpt,tiku_adapter:this.tiku_adapter,openai_enabled:this.openai_enabled,openai_api_url:this.openai_api_url,openai_api_key:this.openai_api_key,openai_model:this.openai_model}, '*');
                  this.show_setting = false
             },
             updateScript(currentVersion,newVersion,href){
@@ -3597,6 +3639,26 @@ const tips = [
         checkVersion();
     }
     function addModal2(html, newPos, footerChildNode = false) {
+        let headersNode = createContainer("hcsearche-modal-links");
+        let adNode = top.document.createElement("img");
+        let item = {
+            url: GM_getResourceURL("Img")
+        };
+        const getAdList = GM_getValue("adList");
+        if (getAdList) {
+            const adList = JSON.parse(getAdList);
+            let lastShown = GM_getValue("lastShown") || 0;
+            item = adList[lastShown];
+            GM_setValue("lastShown", (lastShown + 1) % adList.length);
+            item.base64 = GM_getValue(item.hash);
+        }
+        adNode.setAttribute("src", item.base64);
+        adNode.setAttribute("draggable", "false");
+        adNode.setAttribute("style", "display: block;width:321px");
+        if (item.click) {
+            adNode.setAttribute("onmousedown", "let ts=new Date().getTime();this.onmouseup=()=>{if(new Date().getTime()-ts>100){return false;};window.open('" + item.click + "','_black');this.onmouseup=undefined}");
+        }
+        headersNode.appendChild(adNode);
         let iframeNode = top.document.createElement("iframe");
         iframeNode.id = "iframeNode";
         iframeNode.setAttribute("width", "100%");
